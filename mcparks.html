@@ -1,0 +1,541 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Orlando Show Tracker</title>
+    <style>
+        :root {
+            --bg-color: #121212;
+            --panel-bg: #1e1e1e;
+            --text-main: #ffffff;
+            --text-muted: #888888;
+            --epcot: #d42729;
+            --remember: #8b1ff0;
+            --happily: #f5a716;
+        }
+
+        body {
+            background-color: var(--bg-color);
+            color: var(--text-main);
+            font-family: 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+            margin: 0;
+            padding: 0;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            min-height: 100vh;
+            background-image: radial-gradient(circle at 50% 0%, #2a2a2a 0%, #121212 70%);
+        }
+
+        .dashboard {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 30px;
+            max-width: 1200px;
+            width: 90%;
+            margin: 40px auto;
+        }
+
+        /* Left Side: Hero Tracker */
+        .hero-panel {
+            flex: 1;
+            min-width: 350px;
+            background-color: var(--panel-bg);
+            border-radius: 20px;
+            padding: 40px;
+            box-shadow: 0 15px 35px rgba(0,0,0,0.5);
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            text-align: center;
+            position: relative;
+            overflow: hidden;
+            border-top: 8px solid #555;
+            transition: border-color 0.4s ease;
+        }
+
+        .location-header {
+            font-size: 1rem;
+            color: var(--text-muted);
+            text-transform: uppercase;
+            letter-spacing: 2px;
+            margin-bottom: 5px;
+            font-weight: bold;
+        }
+
+        .debug-warning {
+            color: #f5a716;
+            animation: pulse 2s infinite;
+        }
+
+        .big-clock {
+            font-size: 4.5rem;
+            font-weight: 800;
+            letter-spacing: -2px;
+            margin-bottom: 30px;
+            font-variant-numeric: tabular-nums;
+            text-shadow: 0 4px 15px rgba(0,0,0,0.5);
+        }
+
+        .badge {
+            padding: 8px 16px;
+            border-radius: 30px;
+            font-size: 1rem;
+            font-weight: bold;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            margin-bottom: 15px;
+        }
+
+        .show-name {
+            font-size: 2.5rem;
+            font-weight: 800;
+            margin: 0 0 15px 0;
+        }
+
+        .big-timer {
+            font-size: 4rem;
+            font-family: 'Courier New', Courier, monospace;
+            font-weight: bold;
+            background: rgba(0,0,0,0.3);
+            padding: 10px 30px;
+            border-radius: 15px;
+            margin-bottom: 20px;
+        }
+
+        /* Announcements */
+        .announcement {
+            display: none;
+            font-size: 1.2rem;
+            color: #ffd700;
+            margin-bottom: 15px;
+            font-weight: bold;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            animation: fadeInDown 0.5s ease-out;
+        }
+
+        .warp-command {
+            display: none;
+            font-size: 1.5rem;
+            font-family: monospace;
+            background-color: rgba(255, 255, 255, 0.1);
+            border: 2px dashed;
+            padding: 15px 25px;
+            border-radius: 10px;
+            font-weight: bold;
+            animation: pulse 2s infinite;
+        }
+
+        /* Right Side: Leaderboard */
+        .schedule-panel {
+            flex: 1;
+            min-width: 350px;
+            background-color: var(--panel-bg);
+            border-radius: 20px;
+            padding: 30px;
+            box-shadow: 0 15px 35px rgba(0,0,0,0.5);
+            display: flex;
+            flex-direction: column;
+        }
+
+        .schedule-header {
+            font-size: 1.5rem;
+            font-weight: bold;
+            margin-bottom: 20px;
+            padding-bottom: 10px;
+            border-bottom: 2px solid #333;
+        }
+
+        .schedule-list {
+            display: flex;
+            flex-direction: column;
+            gap: 15px;
+        }
+
+        .schedule-item {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            background-color: rgba(0,0,0,0.2);
+            padding: 15px 20px;
+            border-radius: 12px;
+            border-left: 5px solid #555;
+        }
+
+        .schedule-item.active {
+            background-color: rgba(255,255,255,0.05);
+            border-left-width: 8px;
+        }
+
+        .item-info {
+            display: flex;
+            flex-direction: column;
+            text-align: left;
+        }
+
+        .item-time {
+            font-size: 1.1rem;
+            font-weight: bold;
+        }
+
+        .item-name {
+            font-size: 0.9rem;
+            color: var(--text-muted);
+        }
+
+        .item-status {
+            font-family: monospace;
+            font-size: 1.1rem;
+            font-weight: bold;
+            text-align: right;
+        }
+
+        /* --- Debug Menu Styles --- */
+        .debug-btn {
+            position: fixed;
+            bottom: 20px;
+            right: 20px;
+            background: #333;
+            border: 2px solid #555;
+            color: white;
+            padding: 12px;
+            border-radius: 50%;
+            cursor: pointer;
+            font-size: 1.2rem;
+            z-index: 100;
+            transition: all 0.3s ease;
+        }
+        
+        .debug-btn:hover {
+            background: #444;
+            transform: scale(1.1);
+        }
+
+        .debug-panel {
+            position: fixed;
+            bottom: 80px;
+            right: 20px;
+            background: #222;
+            border: 2px solid #555;
+            padding: 20px;
+            border-radius: 12px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.8);
+            z-index: 100;
+            display: none; /* Hidden by default */
+            flex-direction: column;
+            gap: 15px;
+            width: 250px;
+        }
+
+        .debug-panel.active {
+            display: flex;
+        }
+
+        .debug-panel h3 {
+            margin: 0;
+            font-size: 1.1rem;
+            text-transform: uppercase;
+            border-bottom: 1px solid #444;
+            padding-bottom: 10px;
+        }
+
+        .debug-panel input {
+            background: #111;
+            color: white;
+            border: 1px solid #555;
+            padding: 8px;
+            border-radius: 6px;
+            font-family: monospace;
+        }
+
+        .debug-panel button {
+            background: #f5a716;
+            color: black;
+            border: none;
+            padding: 10px;
+            border-radius: 6px;
+            font-weight: bold;
+            cursor: pointer;
+        }
+
+        .debug-panel button.reset {
+            background: #d42729;
+            color: white;
+        }
+
+        /* Animations */
+        @keyframes pulse {
+            0% { transform: scale(1); opacity: 1; }
+            50% { transform: scale(1.02); opacity: 0.8; }
+            100% { transform: scale(1); opacity: 1; }
+        }
+
+        @keyframes fadeInDown {
+            0% { opacity: 0; transform: translateY(-10px); }
+            100% { opacity: 1; transform: translateY(0); }
+        }
+
+        .color-E { color: var(--epcot); border-color: var(--epcot); }
+        .color-R { color: var(--remember); border-color: var(--remember); }
+        .color-H { color: var(--happily); border-color: var(--happily); }
+
+        .bg-E { background-color: var(--epcot); color: white; }
+        .bg-R { background-color: var(--remember); color: white; }
+        .bg-H { background-color: var(--happily); color: black; }
+    </style>
+</head>
+<body>
+
+    <div class="dashboard">
+        <!-- Main Tracker Panel -->
+        <div class="hero-panel" id="hero-panel">
+            <div class="location-header" id="location-header">Orlando (Eastern Time)</div>
+            <div class="big-clock" id="clock">00:00:00</div>
+            
+            <div class="badge" id="main-badge">Loading...</div>
+            <div class="show-name" id="main-title">Searching Schedule</div>
+            <div class="big-timer" id="main-timer">--:--:--</div>
+            
+            <div class="announcement" id="announcement"></div>
+            <div class="warp-command" id="warp-command">/warp unknown</div>
+        </div>
+
+        <!-- Leaderboard Schedule Panel -->
+        <div class="schedule-panel">
+            <div class="schedule-header">Upcoming Shows</div>
+            <div class="schedule-list" id="schedule-list">
+                <!-- Javascript will populate this -->
+            </div>
+        </div>
+    </div>
+
+    <!-- Debug Menu -->
+    <button class="debug-btn" onclick="toggleDebug()">⚙️</button>
+    <div class="debug-panel" id="debug-panel">
+        <h3>Time Travel Tester</h3>
+        <label for="debug-time-input" style="font-size: 0.85rem; color: #aaa;">Set Fake Orlando Time:</label>
+        <!-- step="1" allows picking exact seconds -->
+        <input type="datetime-local" id="debug-time-input" step="1">
+        <button onclick="applyDebugTime()">Apply Fake Time</button>
+        <button class="reset" onclick="resetRealTime()">Reset to Real Time</button>
+    </div>
+
+    <script>
+        // Set individual show durations here (Mins and Secs)
+        const SHOWS = {
+            E: { name: "Epcot Forever", code: "E", warp: "/warp ef", durMins: 20, durSecs: 0 },
+            R: { name: "Remember Dreams Come True", code: "R", warp: "/warp RDCT", durMins: 20, durSecs: 0 },
+            H: { name: "Happily Ever After", code: "H", warp: "/warp hea", durMins: 18, durSecs: 22 }
+        };
+
+        const scheduleData = [
+            // Sunday (0)
+            { day: 0, hour: 0, show: 'R' }, { day: 0, hour: 7, show: 'R' }, { day: 0, hour: 11, show: 'E' }, { day: 0, hour: 14, show: 'H' }, { day: 0, hour: 16, show: 'E' }, { day: 0, hour: 18, show: 'H' }, { day: 0, hour: 21, show: 'H' },
+            // Monday (1)
+            { day: 1, hour: 0, show: 'R' }, { day: 1, hour: 7, show: 'H' }, { day: 1, hour: 11, show: 'R' }, { day: 1, hour: 14, show: 'H' }, { day: 1, hour: 16, show: 'E' }, { day: 1, hour: 18, show: 'E' }, { day: 1, hour: 21, show: 'H' },
+            // Tuesday (2)
+            { day: 2, hour: 0, show: 'R' }, { day: 2, hour: 7, show: 'E' }, { day: 2, hour: 11, show: 'R' }, { day: 2, hour: 14, show: 'H' }, { day: 2, hour: 16, show: 'E' }, { day: 2, hour: 18, show: 'R' }, { day: 2, hour: 21, show: 'H' },
+            // Wednesday (3)
+            { day: 3, hour: 0, show: 'R' }, { day: 3, hour: 7, show: 'H' }, { day: 3, hour: 11, show: 'R' }, { day: 3, hour: 14, show: 'H' }, { day: 3, hour: 16, show: 'E' }, { day: 3, hour: 18, show: 'E' }, { day: 3, hour: 21, show: 'H' },
+            // Thursday (4)
+            { day: 4, hour: 0, show: 'R' }, { day: 4, hour: 7, show: 'E' }, { day: 4, hour: 11, show: 'R' }, { day: 4, hour: 14, show: 'H' }, { day: 4, hour: 16, show: 'E' }, { day: 4, hour: 18, show: 'R' }, { day: 4, hour: 21, show: 'H' },
+            // Friday (5)
+            { day: 5, hour: 0, show: 'R' }, { day: 5, hour: 7, show: 'R' }, { day: 5, hour: 11, show: 'E' }, { day: 5, hour: 14, show: 'H' }, { day: 5, hour: 16, show: 'E' }, { day: 5, hour: 18, show: 'H' }, { day: 5, hour: 21, show: 'H' },
+            // Saturday (6)
+            { day: 6, hour: 0, show: 'R' }, { day: 6, hour: 7, show: 'H' }, { day: 6, hour: 11, show: 'H' }, { day: 6, hour: 14, show: 'R' }, { day: 6, hour: 16, show: 'E' }, { day: 6, hour: 18, show: 'R' }, { day: 6, hour: 21, show: 'H' }
+        ];
+
+        // --- DEBUG STATE ---
+        let isDebugMode = false;
+        let debugTimeOffset = 0; // The difference between real time and fake time in milliseconds
+
+        function toggleDebug() {
+            document.getElementById("debug-panel").classList.toggle("active");
+        }
+
+        function applyDebugTime() {
+            let inputVal = document.getElementById("debug-time-input").value;
+            if (!inputVal) return;
+
+            // Get the exact raw time the user asked for
+            let targetFakeTime = new Date(inputVal).getTime();
+            
+            // Get what the current Orlando time actually is right now
+            let realOrlandoStr = new Date().toLocaleString("en-US", {timeZone: "America/New_York"});
+            let realOrlandoTime = new Date(realOrlandoStr).getTime();
+
+            // Calculate the gap so we can keep the clock ticking forward from the fake time
+            debugTimeOffset = targetFakeTime - realOrlandoTime;
+            isDebugMode = true;
+
+            // UI Changes to warn user
+            let header = document.getElementById("location-header");
+            header.innerText = "⚠️ ORLANDO (DEBUG TIME ACTIVE) ⚠️";
+            header.className = "location-header debug-warning";
+            
+            updateDashboard(); // Force immediate update
+        }
+
+        function resetRealTime() {
+            isDebugMode = false;
+            debugTimeOffset = 0;
+            
+            let header = document.getElementById("location-header");
+            header.innerText = "Orlando (Eastern Time)";
+            header.className = "location-header";
+            
+            document.getElementById("debug-time-input").value = "";
+            updateDashboard();
+        }
+
+        // --- CORE LOGIC ---
+        function getOrlandoTime() {
+            let orlandoStr = new Date().toLocaleString("en-US", {timeZone: "America/New_York"});
+            let realTime = new Date(orlandoStr);
+            
+            if (isDebugMode) {
+                return new Date(realTime.getTime() + debugTimeOffset);
+            }
+            return realTime;
+        }
+
+        function getUpcomingShows(now) {
+            let shows = [];
+            for (let offset = -1; offset <= 2; offset++) {
+                let targetDate = new Date(now);
+                targetDate.setDate(now.getDate() + offset);
+                let dayOfWeek = targetDate.getDay();
+
+                let dailySchedule = scheduleData.filter(s => s.day === dayOfWeek);
+                for (let s of dailySchedule) {
+                    let showInfo = SHOWS[s.show];
+                    let showTime = new Date(targetDate);
+                    showTime.setHours(s.hour, 0, 0, 0);
+                    
+                    let endTime = new Date(showTime);
+                    endTime.setMinutes(showTime.getMinutes() + showInfo.durMins);
+                    endTime.setSeconds(showTime.getSeconds() + showInfo.durSecs);
+
+                    shows.push({
+                        startTime: showTime,
+                        endTime: endTime,
+                        info: showInfo
+                    });
+                }
+            }
+            shows.sort((a, b) => a.startTime - b.startTime);
+            return shows;
+        }
+
+        function formatCountdown(ms) {
+            if (ms < 0) return "00:00:00";
+            let totalSeconds = Math.floor(ms / 1000);
+            let hours = Math.floor(totalSeconds / 3600);
+            let minutes = Math.floor((totalSeconds % 3600) / 60);
+            let seconds = totalSeconds % 60;
+            return `${String(hours).padStart(2, '0')}:${String(minutes).padStart(2, '0')}:${String(seconds).padStart(2, '0')}`;
+        }
+
+        function formatTime12Hr(date) {
+            let ampm = date.getHours() >= 12 ? 'PM' : 'AM';
+            let hr = date.getHours() % 12 || 12;
+            let min = String(date.getMinutes()).padStart(2, '0');
+            return `${hr}:${min} ${ampm}`;
+        }
+
+        function updateDashboard() {
+            let now = getOrlandoTime();
+
+            // Update Big Clock
+            let sec = String(now.getSeconds()).padStart(2, '0');
+            document.getElementById("clock").innerHTML = `${formatTime12Hr(now).split(' ')[0]}<span style="font-size: 2.5rem; color: #888;">:${sec} ${formatTime12Hr(now).split(' ')[1]}</span>`;
+
+            let schedule = getUpcomingShows(now);
+            let activeIndex = schedule.findIndex(s => now < s.endTime);
+            let currentTarget = schedule[activeIndex];
+
+            // 1. Update Hero Panel
+            let heroEl = document.getElementById("hero-panel");
+            let badgeEl = document.getElementById("main-badge");
+            let titleEl = document.getElementById("main-title");
+            let timerEl = document.getElementById("main-timer");
+            let warpEl = document.getElementById("warp-command");
+            let announcementEl = document.getElementById("announcement");
+
+            titleEl.innerText = currentTarget.info.name;
+            titleEl.className = "show-name color-" + currentTarget.info.code;
+            badgeEl.className = "badge bg-" + currentTarget.info.code;
+            warpEl.className = "warp-command color-" + currentTarget.info.code;
+
+            let cssColors = { E: '#d42729', R: '#8b1ff0', H: '#f5a716' };
+            heroEl.style.borderTopColor = cssColors[currentTarget.info.code];
+
+            let timeToStart = currentTarget.startTime - now;
+            
+            if (now >= currentTarget.startTime && now < currentTarget.endTime) {
+                // IN PROGRESS
+                badgeEl.innerText = "In Progress";
+                timerEl.innerText = formatCountdown(currentTarget.endTime - now);
+                warpEl.innerText = currentTarget.info.warp;
+                warpEl.style.display = "block";
+                announcementEl.style.display = "none";
+            } else {
+                // UPCOMING
+                badgeEl.innerText = "Starts In";
+                timerEl.innerText = formatCountdown(timeToStart);
+                
+                // Timeline logic
+                if (timeToStart <= 300000 && timeToStart > 0) {
+                    announcementEl.innerText = "📣 5-Minute Warning Announced!";
+                    announcementEl.style.display = "block";
+                    warpEl.innerText = currentTarget.info.warp;
+                    warpEl.style.display = "block";
+                } else if (timeToStart <= 600000 && timeToStart > 0) {
+                    announcementEl.innerText = "📣 10-Minute Warning Announced!";
+                    announcementEl.style.display = "block";
+                    warpEl.style.display = "none";
+                } else {
+                    announcementEl.style.display = "none";
+                    warpEl.style.display = "none";
+                }
+            }
+
+            // 2. Update Leaderboard
+            let leaderboardHtml = "";
+            let upcomingList = schedule.slice(activeIndex, activeIndex + 6);
+            
+            upcomingList.forEach((show, index) => {
+                let isCurrent = (index === 0);
+                let statusText = "";
+                let colorCode = cssColors[show.info.code];
+
+                if (now >= show.startTime && now < show.endTime) {
+                    statusText = `<span style="color: ${colorCode}">In Progress</span>`;
+                } else {
+                    statusText = formatCountdown(show.startTime - now);
+                }
+
+                leaderboardHtml += `
+                    <div class="schedule-item ${isCurrent ? 'active' : ''}" style="border-left-color: ${colorCode}">
+                        <div class="item-info">
+                            <div class="item-time">${formatTime12Hr(show.startTime)}</div>
+                            <div class="item-name">${show.info.name}</div>
+                        </div>
+                        <div class="item-status">${statusText}</div>
+                    </div>
+                `;
+            });
+
+            document.getElementById("schedule-list").innerHTML = leaderboardHtml;
+        }
+
+        // Initialize and tick
+        updateDashboard();
+        setInterval(updateDashboard, 1000);
+
+    </script>
+</body>
+</html>
